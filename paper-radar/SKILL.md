@@ -1,9 +1,9 @@
 ---
-name: "arxiv-digest"
+name: "paper-radar"
 description: "Set up a personalized, self-updating arXiv literature digest as a scheduled task, built from the user's own papers. Requires the alphaXiv connector. Use when someone wants to follow new arXiv papers in their field."
 ---
 
-# arXiv digest
+# paper-radar: arXiv digest
 
 This skill sets up a recurring digest of new arXiv papers for a researcher in any field. It is tailored to them and adapts as they publish. Each run rebuilds the researcher's profile from their own arXiv papers, scans the relevant new listings, and writes a short digest. Each paper in the digest gets plain-language explanations, its jargon decoded, and a concrete note on why it matters to *their* work. The digest goes out as a doc, with a push notification.
 
