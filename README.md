@@ -26,6 +26,7 @@ Every run rebuilds your research profile from your arXiv author feed. It weights
 ## Requirements
 
 - A Claude account with **skills** and **scheduled tasks** available. Use it in the Claude app on web, desktop or mobile.
+- **The [alphaXiv](https://www.alphaxiv.org) connector (required).** arxiv.org blocks or rate-limits most automated reading, so the skill reads papers and finds your publications through alphaXiv. Connect it under **Settings → Connectors** before setting up the digest. The skill checks for it, offers to connect it if it's missing, and won't create the digest without it.
 - Ideally, an [arXiv author ID](https://info.arxiv.org/help/author_identifiers.html). Your author page looks like `https://arxiv.org/a/<your_id>.html`. If you don't have one, a few arXiv IDs of your papers, or of papers central to your interests, work too.
 
 > Claude Code users: the skill will load (see below), but the scheduled digest relies on features of the Claude app, so set it up from there.
@@ -66,18 +67,20 @@ To get a sample right away, use **Run now** in the scheduled task's settings.
 
 The skill tells Claude how to gather your inputs, build and confirm a profile from your papers, pick a schedule aligned with arXiv's announcement times (Sun–Thu, 20:00 US Eastern), and create a scheduled task from a self-contained prompt template. Each run:
 
-1. reads your arXiv author feed (`.atom2`) and builds your current research profile;
-2. checks Semantic Scholar for new papers citing you;
-3. scans the "pastweek" listings for your categories, keeping only the announcement days in its window;
-4. scores papers in three rings: core, adjacent and wider field;
-5. reads the abstracts, and the full HTML of the must-reads, so its explanations are grounded in the papers;
-6. writes the digest as a doc and sends a short notification.
+1. checks that the alphaXiv connector is attached (and stops with a notification if not);
+2. finds your papers through alphaXiv and builds your current research profile;
+3. checks Semantic Scholar for new papers citing you;
+4. scans the "pastweek" listings for your categories, keeping only the announcement days in its window, and falls back to an alphaXiv recency search if arXiv blocks a listing;
+5. scores papers in three rings: core, adjacent and wider field;
+6. reads the abstracts through alphaXiv, and the full text of the must-reads, so its explanations are grounded in the papers;
+7. writes the digest as a doc and sends a short notification.
 
 The full logic is in [`arxiv-digest/SKILL.md`](arxiv-digest/SKILL.md). Edit it to change the digest format or the defaults.
 
 ## Limitations
 
-- arXiv rate-limits bursts of requests. The runs fetch pages one at a time and retry, but a run may occasionally fall back to your baseline profile. The footer says so when this happens.
+- arXiv rate-limits bursts of requests. Papers are read through alphaXiv; only the category listings come from arxiv.org, and if a listing is blocked the run falls back to an alphaXiv recency search, which can miss papers with unusual titles or keywords. The footer says when this happens.
+- alphaXiv can merge researchers who share a name. The skill stores your arXiv IDs at setup to keep your profile clean.
 - Very large categories (e.g. `cs.LG`, `astro-ph.GA`) are filtered by title first, so a relevant paper with an uninformative title can slip through.
 - Summaries are written by an AI. Check anything important against the paper itself.
 

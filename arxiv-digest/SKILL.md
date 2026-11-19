@@ -1,6 +1,6 @@
 ---
 name: "arxiv-digest"
-description: "Set up a personalized, self-updating arXiv literature digest as a scheduled task, built from the user's own papers. Use when someone wants to follow new arXiv papers in their field."
+description: "Set up a personalized, self-updating arXiv literature digest as a scheduled task, built from the user's own papers. Requires the alphaXiv connector. Use when someone wants to follow new arXiv papers in their field."
 ---
 
 # arXiv digest
@@ -8,6 +8,16 @@ description: "Set up a personalized, self-updating arXiv literature digest as a 
 This skill sets up a recurring digest of new arXiv papers for a researcher in any field. It is tailored to them and adapts as they publish. Each run rebuilds the researcher's profile from their own arXiv papers, scans the relevant new listings, and writes a short digest. Each paper in the digest gets plain-language explanations, its jargon decoded, and a concrete note on why it matters to *their* work. The digest goes out as a doc, with a push notification.
 
 The deliverable is a **scheduled task**, not a one-off summary. If the user only wants today's papers once, do that directly instead.
+
+## Step 0: Require the alphaXiv connector (mandatory — do this first)
+
+arxiv.org blocks or rate-limits most automated fetches, so this skill reads papers through the **alphaXiv connector** (MCP tools named `mcp__alphaXiv__*`, e.g. `get_paper_content`, `get_researcher_papers`, `discover_papers`, `answer_pdf_queries`). Do not set up the digest without it.
+
+1. Check whether the alphaXiv tools are available. They may be deferred, so run ToolSearch with the query `alphaxiv`.
+2. If they're missing, run SearchMcpRegistry with `["alphaxiv"]` and pass the match to SuggestConnectors so the user can connect it in one click. Tell them in one line that the digest needs alphaXiv because arXiv blocks direct automated reading. **Stop there** and wait until they say it's connected. Don't fall back to plain WebFetch of arxiv.org.
+3. Once the tools are present, load the ones you need with ToolSearch (`select:mcp__alphaXiv__get_researcher_papers,mcp__alphaXiv__get_paper_content,mcp__alphaXiv__discover_papers`) and continue.
+
+The connector must also be attached to the scheduled task (Step 4), because every run needs it.
 
 ## Step 1: Gather inputs (one AskUserQuestion round, plus free text)
 
@@ -22,7 +32,12 @@ Also use their time zone, which is usually in context. Ask only if it's unknown.
 
 ## Step 2: Verify the source and confirm the profile
 
-Fetch their author feed (or the abstracts of the listed papers) **once**. arXiv rate-limits bursts, so fetch arxiv.org pages one at a time, never in parallel. If you're blocked, wait about 60 s and retry once. If it still fails, carry on with what the user told you, and say so.
+Read their papers through alphaXiv:
+- `get_researcher_papers` with their full name (sort `recent`) to list their papers. Check the list against their author page if the user gave one: same-name researchers get merged, so keep only papers the user actually wrote. If unsure, ask.
+- `get_paper_content` (`https://arxiv.org/abs/<id>`) for the abstracts and the intro/conclusions of their 2–3 most recent papers.
+You may try one WebFetch of the arXiv author page (`https://arxiv.org/a/<id>.html`) to confirm the paper list. If it's blocked or rate-limited, don't retry. Rely on alphaXiv and what the user told you.
+
+Record the **arXiv IDs** of their (non-excluded) papers. They go into the prompt, so each run can read the papers directly, even when the author page is unreachable.
 
 From the papers (excluding side projects), draft a short profile and show it to the user in 4–6 lines:
 - core topics, methods/codes, and the observables or datasets they work with;
@@ -43,7 +58,7 @@ Work out the coverage window for each run (which announcement days it covers) an
 
 ## Step 4: Create the scheduled task
 
-Use the session's scheduling tool (create_trigger or equivalent; find it with ToolSearch if needed). Check the existing scheduled tasks first so you don't create a duplicate digest. Set push notifications on. Turn email on only if the user chose email. Name it "arXiv literature digest". Fill in the prompt template below. Every firing starts a fresh session, so the prompt must stand alone.
+Use the session's scheduling tool (create_trigger or equivalent; find it with ToolSearch if needed). Check the existing scheduled tasks first so you don't create a duplicate digest. Create the task only after Step 0 has passed in this session: the connectors connected at creation are the ones attached to the task. Check the result's connector list (e.g. `mcp_connections`) for alphaXiv. If it's missing, tell the user that the runs won't be able to read papers, and that they should add the alphaXiv connector to the task in its settings. Set push notifications on. Turn email on only if the user chose email. Name it "arXiv literature digest". Fill in the prompt template below. Every firing starts a fresh session, so the prompt must stand alone.
 
 After creating it, tell the user in a few lines: when it runs, what each digest contains, and the task's approval setting. Also tell them they can steer it any time ("more X", "drop Y", "I started working on Z") and that you'll update the task's prompt. Mention that the task's settings have **Run now** if they want a sample immediately.
 
@@ -52,12 +67,15 @@ After creating it, tell the user in a few lines: when it runs, what each digest 
 ```
 You are producing a <frequency> arXiv literature digest for <name>, a <career stage> working on <one-line research summary>. Keep them up to date without effort. Filter hard, explain clearly, and say why each paper matters to THEM. Their interests change as they publish, so rebuild their research profile from their own papers at the start of every run.
 
-IMPORTANT: arXiv rate-limits requests. Fetch arxiv.org pages ONE AT A TIME (never several in one turn) with a short pause between them. If a fetch is rate-limited, run `sleep 60` in the shell and retry, up to 3 times, before moving on. The shell usually cannot reach arxiv.org; use WebFetch.
+## Step 0: alphaXiv connector (REQUIRED)
+This digest reads papers through the alphaXiv connector (mcp__alphaXiv__* tools), because arxiv.org blocks or rate-limits automated fetches. First run ToolSearch with the query "alphaxiv", then load get_researcher_papers, get_paper_content, discover_papers and answer_pdf_queries with one "select:" query. If no alphaXiv tools exist, STOP. Do not try to scrape arxiv.org instead. Your final message (which becomes the push notification) must be exactly: "arXiv digest skipped: the alphaXiv connector isn't attached to this scheduled task. Add it in the task's settings (or reconnect it), then use Run now."
+
+Rules for arxiv.org: never use WebFetch on arxiv.org/abs or arxiv.org/html. Use alphaXiv get_paper_content (pass https://arxiv.org/abs/<id>) or answer_pdf_queries instead. The only arxiv.org pages you may WebFetch are the category listing pages in Step 4. Fetch them ONE AT A TIME. If one is rate-limited, run `sleep 60` and retry once, then switch to the alphaXiv fallback. The shell cannot reach arxiv.org.
 
 ## Step 1: Research profile (every run)
-1. WebFetch <author feed URL, e.g. https://arxiv.org/a/<id>.atom2>. If that fails, use <author HTML page>. [If no author page: read the abstracts of <arXiv IDs>.] List their papers (ID, title, coauthors, date).
+1. Their papers: call alphaXiv get_researcher_papers with researchers=["<full name>"], sort "recent". Keep only papers in this known list, plus anything newer that clearly matches their topics and coauthors: <arXiv IDs of their non-excluded papers>. (Same-name researchers can be merged; never attribute a paper to them on name alone.) If that call fails, use the known list. List their papers (ID, title, coauthors, date).
 2. EXCLUDE: <side-project papers/topics, or "nothing">. Never use these to shape the profile, list them as their work, or track their citations.
-3. Use the feed's abstracts. For their 3 most recent papers, also skim the intro and conclusions (https://arxiv.org/html/<id>) for the open problems and future work they mention.
+3. Get the abstracts with alphaXiv get_paper_content. For their 3 most recent papers, also read the intro and conclusions for the open problems and future work they mention.
 4. Write a working profile: core topics, methods/codes, observables/datasets, open questions, coauthors. Weight recent papers more heavily. If a paper newer than the baseline appears, note "profile updated with arXiv:XXXX" in the footer.
 Baseline if nothing can be read: <the confirmed profile from setup>. Fields where they may need jargon explained: <adjacent fields>.
 
@@ -68,7 +86,10 @@ For each of their (non-excluded) papers, fetch https://api.semanticscholar.org/g
 <explicit per-run window, e.g. "The Monday run covers announcements since Thursday's run; the Thursday run covers announcements since Monday's run. If triggered manually, cover the last ~3 announcement days."> Use the announcement dates on the pastweek listing pages.
 
 ## Step 4: Scan listings
-For each category in <categories>: https://arxiv.org/list/<cat>/pastweek?show=2000 (for very large categories, page with &skip=N and filter by title first). Ask WebFetch for every arXiv ID + title + authors in the window. If the output looks truncated, fetch the remainder. Read https://arxiv.org/abs/<id> for each candidate. For must-reads, skim https://arxiv.org/html/<id> so the explanation reflects the actual method and results. Never invent results, numbers or authors. Say when something couldn't be read.
+Find the candidates:
+- Primary: for each category in <categories>, WebFetch https://arxiv.org/list/<cat>/pastweek?show=2000 (one at a time; for very large categories, page with &skip=N and filter by title first). Ask for every arXiv ID + title + authors in the window. If the output looks truncated, fetch the remainder.
+- Fallback (if a listing is blocked after one retry), and also as a top-up for Ring 1: alphaXiv discover_papers with prioritize "recency", published_after = <start of the window>. Use keywords taken from the profile's core and adjacent topics. Use at most 2 searches per turn, and spread them over several turns to cover Ring 1 and Ring 2. Keep only papers first posted inside the window.
+Read each candidate's abstract with alphaXiv get_paper_content (https://arxiv.org/abs/<id>). For must-reads, read the full content (fullText if the report is thin), or use answer_pdf_queries for the method, key assumptions and main results, so the explanation reflects the actual paper. Never invent results, numbers or authors. Say when something couldn't be read, and name the listing pages that fell back to alphaXiv search.
 
 ## Relevance rings (score against the Step 1 profile)
 - Ring 1, core: directly touches their topics, methods, data or open questions: <core topics>. Also papers by their coauthors on these topics.
@@ -83,7 +104,7 @@ Title: "Literature digest – <date range of announcements>"
 3. Worth knowing (Ring 1–2, up to ~12): one line each.
 4. Wider field (Ring 3, ≤3): two sentences each.
 5. Jargon of the week: a 5–8 term mini glossary.
-6. Footer: listings scanned, window, papers used for the profile, anything inaccessible.
+6. Footer: listings scanned (and any that fell back to alphaXiv search), window, papers used for the profile, anything inaccessible.
 If the window is thin, keep the digest short. Never pad it.
 
 ## Delivery
