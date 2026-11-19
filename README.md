@@ -1,6 +1,6 @@
-# arxiv-digest
+# paper-radar 📡
 
-A [Claude skill](https://support.claude.com/en/articles/12512180) that sets up a **personalized, self-updating arXiv literature digest** for researchers in any field.
+`paper-radar` holds `arxiv-digest`, a [Claude skill](https://support.claude.com/en/articles/12512180) that sets up a **personalized, self-updating arXiv literature digest** for researchers in any field.
 
 Following arXiv every day is hard: you forget, the listings are long, and papers outside your niche are full of jargon. This skill turns Claude into a reading assistant that does the filtering and the explaining for you.
 
@@ -39,8 +39,8 @@ Every run rebuilds your research profile from your arXiv author feed. It weights
 
 **Claude Code**
 ```bash
-git clone https://github.com/<you>/arxiv-digest
-mkdir -p ~/.claude/skills && cp -r arxiv-digest/arxiv-digest ~/.claude/skills/
+git clone https://github.com/SaptarshiSrkr/paper-radar
+mkdir -p ~/.claude/skills && cp -r paper-radar/arxiv-digest ~/.claude/skills/
 ```
 
 ## Use
