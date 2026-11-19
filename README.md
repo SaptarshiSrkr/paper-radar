@@ -1,6 +1,6 @@
 # paper-radar 📡
 
-`paper-radar` holds `arxiv-digest`, a [Claude skill](https://support.claude.com/en/articles/12512180) that sets up a **personalized, self-updating arXiv literature digest** for researchers in any field.
+`paper-radar` is a [Claude skill](https://support.claude.com/en/articles/12512180) that sets up a **personalized, self-updating arXiv literature digest** for researchers in any field.
 
 Following arXiv every day is hard: you forget, the listings are long, and papers outside your niche are full of jargon. This skill turns Claude into a reading assistant that does the filtering and the explaining for you.
 
@@ -34,14 +34,14 @@ Every run rebuilds your research profile from your arXiv author feed. It weights
 ## Install
 
 **Claude app (recommended)**
-1. Download this repo's [`arxiv-digest.zip`](arxiv-digest.zip), or zip the `arxiv-digest/` folder yourself.
+1. Download this repo's [`paper-radar.zip`](paper-radar.zip), or zip the `paper-radar/` folder yourself.
 2. In Claude, go to **Customize → Skills**, click **+ → Create skill → Upload a skill**, and upload the ZIP.
 3. Make sure the skill is toggled on.
 
 **Claude Code**
 ```bash
 git clone https://github.com/SaptarshiSrkr/paper-radar
-mkdir -p ~/.claude/skills && cp -r paper-radar/arxiv-digest ~/.claude/skills/
+mkdir -p ~/.claude/skills && cp -r paper-radar/paper-radar ~/.claude/skills/
 ```
 
 ## Use
@@ -75,7 +75,7 @@ The skill tells Claude how to gather your inputs, build and confirm a profile fr
 6. reads the abstracts through alphaXiv, and the full text of the must-reads, so its explanations are grounded in the papers;
 7. writes the digest as a doc and sends a short notification.
 
-The full logic is in [`arxiv-digest/SKILL.md`](arxiv-digest/SKILL.md). Edit it to change the digest format or the defaults.
+The full logic is in [`paper-radar/SKILL.md`](paper-radar/SKILL.md). Edit it to change the digest format or the defaults.
 
 ## Limitations
 
